@@ -249,6 +249,7 @@ def basic_consume_multi(conn, queues, prefetch_count=0, no_ack=False):
             arguments = item.get('arguments', {})
         t.x_consumes.append( (queue, spec.encode_basic_consume(
                     queue, '', no_local, no_ack, exclusive, arguments)) )
+        t.refcnt_inc()
     t.x_no_ack = no_ack
     t.x_consumer_tag = {}
     t.register(spec.METHOD_BASIC_DELIVER, _bcm_basic_deliver)
@@ -335,6 +336,7 @@ def _basic_cancel_one(ct):
     ct.send_frames( spec.encode_basic_cancel(consumer_tag) )
 
 def _basic_cancel_ok(ct, result):
+    ct.refcnt_dec()
     if ct.x_consumer_tag:
         _basic_cancel_one(ct)
     else:
@@ -342,7 +344,6 @@ def _basic_cancel_ok(ct, result):
         if ct != ct.x_mt:
             ct.done(None, no_callback=True)
         ct.x_mt = None
-        ct.refcnt_clear()
 
 ####
 def basic_get(conn, queue, no_ack=False):
